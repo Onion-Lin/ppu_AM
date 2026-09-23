@@ -1,0 +1,10 @@
+build/
+*.o
+*.d
+*.a
+*.elf
+*.bin
+*.txt
+*.map
+*.log
+__pycache__/
