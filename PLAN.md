@@ -20,9 +20,11 @@
 | T2 | `ppu/T2-palette` | rgb6 量化 + VGA 16 色表 + 64 项 LUT | 已知色落点正确、64 项全有效 | ✅ 完成 |
 | T3 | `ppu/T3-clip` | 矩形裁剪 | 覆盖 demo 320 宽 / slider 400×300 / 负值 / 1×1 | ✅ 完成 |
 | T4 | `ppu/T4-verilator` | Verilator harness + 真实 PPU RTL | 扫描线断言通过 | ✅ 完成 |
-| T5 | `ppu/T5-render` | `ioe/gpu.c` 翻译层，在 T4 harness 上跑 | VGA 捕获符合预期 | ⬜ 未开始 |
-| T6 | `ppu/T6-scaffold-am` | `scripts/*.mk`、linker、`start.S`、`trm.c`、`ioe.c`、`mpe.c`、arch 头 | `hello` 能编出 ELF | ⬜ 未开始 |
-| T7 | `ppu/T7-periph` | `timer.c`、`input.c`（PS2） | 键码表单测过 | ⬜ 未开始 |
+| T5 | `ppu/T5-render` | `ioe/gpu.c` 翻译层 | FBDRAW→首像素→FILL，裁剪生效 | ✅ 完成 |
+| T6 | `ppu/T6-scaffold-am` | `scripts/*.mk`、linker、`start.S`、`trm.c`、`ioe.c`、`cte.c` | 7 个内核编出 ELF | ✅ 完成 |
+
+> T6 里 `vme.c`/`mpe.c` 最终用 AM 的 `platform/dummy`：PicoRV32 没有 MMU，VME 无法实现。
+| T7 | `ppu/T7-periph` | `timer.c`、`input.c`（PS2） | 寄存器偏移待硬件确认 | 🟡 代码就绪，未验证 |
 | T8 | `ppu/T8-review` | 全量回归 + 代码 review + 文档 | 全绿 + review 记录 | ⬜ 未开始 |
 
 ## 每任务的流程
@@ -82,7 +84,24 @@ Verilator 直接 Verilate 真实 `rtl/Ppu.sv`（不需要 FrameTop，因为 `Ppu
 
 1. **无 VSYNC 同步，靠定时 16.68 ms**。两块板各自晶振，相对漂移可能 ~50 ppm。
    干净解法是把 PPU 的 `vsync` 输出飞线到一个空闲 GPIO 轮询——需要硬件配合，留接口。
-2. **busy 阈值是估算**：`words > 800` 才等。若仲裁比推算慢，会出现命令丢失导致局部花屏。
+2. **busy 阈值是估算**：执行需求 > 1200 个 PPU 时钟才等（`PPU_HIDDEN_CLKS`）。
+   若仲裁比推算慢，会出现命令丢失导致局部花屏。
 3. **clkdiv 依赖实际 CPU 时钟**，必须保证 SCLK ≤ 4.2 MHz。
 4. **非纯色块退化为单色矩形**，已接受。
 5. `TIMER0` / `PS2` 寄存器语义未验证，偏移用宏集中并标 TODO。
+
+## 安装（本仓库怎么用）
+
+这是一个 AbstractMachine 的**附加架构包**，不是独立 AM。装进 AM 树：
+
+```sh
+cp -r am/src/platform/ppu  $AM_HOME/am/src/platform/
+cp -r am/src/riscv/ppu     $AM_HOME/am/src/riscv/
+cp scripts/riscv32-ppu.mk  $AM_HOME/scripts/
+cp scripts/ppu.ld          $AM_HOME/scripts/
+cp scripts/platform/ppu.mk $AM_HOME/scripts/platform/
+```
+
+之后 `make ARCH=riscv32-ppu` 可用。会用到 AM 自带的
+`scripts/isa/riscv.mk`、`am/include/arch/riscv.h`、`platform/dummy/{vme,mpe}.c`。
+详细说明和未验证项见 `README.md`。

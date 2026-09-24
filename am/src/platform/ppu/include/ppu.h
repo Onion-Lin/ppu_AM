@@ -51,14 +51,9 @@ enum {
 #define PPU_IRQE_DONE  1u
 #define PPU_IRQE_VSYNC 2u
 
-/* ---- QSPI transport tuning (StarrySky C2) ---- */
-#define PPU_QSPI_BASE      0x03007000u
-#define PPU_CPU_HZ         64000000u
-/* SCLK = CPU_HZ / (2*(clkdiv+1)).  The PPU needs SCLK <= ~4.2 MHz because
- * SyncSpi samples mosi through a single flop while sclk goes through two;
- * that leaves only P/2+1 PPU clocks of setup.  64 MHz / 16 = 4.0 MHz -> 6.28
- * PPU clocks per bit. */
-#define PPU_QSPI_CLKDIV    7u
+/* ---- QSPI framing facts ----
+ * How one register write becomes one transfer.  The board-side numbers
+ * (register base, CPU clock, divider) belong in ppu_board.h, not here. */
 #define PPU_QSPI_LEN_8B    (8u * 0x80000u)   /* LEN = num_bytes * 0x80000 */
 #define PPU_QSPI_START     258u              /* 0x102, per the SDK driver */
 
